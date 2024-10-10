@@ -8,7 +8,7 @@ import Loader from "../../shared/Loader/Loader";
 import Notification from "../../shared/Notification/Notification";
 import getLoader from "../../redux/loader/loaderSelectors";
 import styles from "../../shared/Modal/Modal.module.css";
-import { pageContainer, bgContainer } from "./MainPage.module.css";
+import styles2 from "./MainPage.module.css";
 
 const MainPage = function () {
   const [showModal, setShowModal] = useState(false);
@@ -24,19 +24,29 @@ const MainPage = function () {
 
   return (
     <>
-      <div className={bgContainer}>
+      <div className={styles2.bgContainer}>
         <Header />
-        <div className={pageContainer}>
+        <div className={styles2.pageContainer}>
           <DailyCaloriesForm onShowModal={modalToggle} />
 
-          <div id="overlay" className={showModal ? styles.overlay : styles.notShow}>
-            <CSSTransition in={showModal} timeout={300} classNames={styles} unmountOnExit>
+          <div
+            id="overlay"
+            className={showModal ? styles.overlay : styles.notShow}
+          >
+            <CSSTransition
+              in={showModal}
+              timeout={300}
+              classNames={styles}
+              unmountOnExit
+            >
               <Modal onModalToggle={modalClose} />
             </CSSTransition>
           </div>
         </div>
       </div>
-      <Notification><span>Выход выполнен успешно</span></Notification>
+      <Notification>
+        <span>Выход выполнен успешно</span>
+      </Notification>
       {loader && <Loader />}
     </>
   );
