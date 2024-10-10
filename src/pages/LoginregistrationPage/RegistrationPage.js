@@ -9,7 +9,7 @@ import RegistrationForm from "../../components/RegistrationForm/RegistrationForm
 import authActions from "../../redux/auth/authActions";
 import getLoader from "../../redux/loader/loaderSelectors";
 import Loader from "../../shared/Loader/Loader";
-import { pageContainer, bgContainer, headerHide, logoHide } from "./LoginRegistrationPage.module.css";
+import styles from "./LoginRegistrationPage-module.css";
 
 const RegistrationPage = () => {
   const name = useSelector(authSelectors.getUserName);
@@ -23,22 +23,24 @@ const RegistrationPage = () => {
       history.push("/auth/login");
     }
   }, [name, history, dispatch]);
-  
+
   return (
     <>
-      <div className={bgContainer}>
-        <div className={headerHide}>
+      <div className={styles.bgContainer}>
+        <div className={styles.headerHide}>
           <Header />
         </div>
-        <div className={logoHide}>
+        <div className={styles.logoHide}>
           <Logo />
         </div>
-        <div className={pageContainer}>
+        <div className={styles.pageContainer}>
           <RegistrationForm />
-          {loader && <Loader/>}
+          {loader && <Loader />}
         </div>
       </div>
-      <Notification><span>Произошла ошибка, повторите попытку еще раз</span></Notification>
+      <Notification>
+        <span>Произошла ошибка, повторите попытку еще раз</span>
+      </Notification>
     </>
   );
 };

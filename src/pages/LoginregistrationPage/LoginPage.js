@@ -7,7 +7,7 @@ import Notification from "../../shared/Notification/Notification";
 import getError from "../../redux/error/errorSelectors";
 import Loader from "../../shared/Loader/Loader";
 import getLoader from "../../redux/loader/loaderSelectors";
-import { pageContainer, bgContainer, headerHide, logoHide } from "./LoginRegistrationPage.module.css";
+import styles from "../LoginregistrationPage/LoginRegistrationPage-module.css";
 
 const LoginPage = () => {
   const isError = useSelector(getError);
@@ -15,20 +15,24 @@ const LoginPage = () => {
 
   return (
     <>
-      <div className={bgContainer}>
+      <div className={styles.bgContainer}>
         <div className={headerHide}>
           <Header />
         </div>
-        <div className={logoHide}>
+        <div className={styles.logoHide}>
           <Logo />
         </div>
-        <div className={pageContainer}>
+        <div className={styles.pageContainer}>
           <LoginForm />
           {loader && <Loader />}
         </div>
       </div>
       <Notification>
-        {isError ? <span>Логин или пароль введен неверно</span> : <span>Регистрация прошла успешно</span>}
+        {isError ? (
+          <span>Логин или пароль введен неверно</span>
+        ) : (
+          <span>Регистрация прошла успешно</span>
+        )}
       </Notification>
     </>
   );
