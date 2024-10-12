@@ -1,83 +1,62 @@
-html {
-  box-sizing: border-box;
-}
+@import-normalize; /* bring in normalize.css styles */
 
-*,
-*::before,
-*::after {
-  box-sizing: inherit;
-}
-#root {
-  margin: 0;
-  padding: 0;
-}
+/* Tailwind CSS */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 body {
   margin: 0;
-  font-family: 'Gotham Pro';
-  font-weight: 700;
-  scrollbar-color: #264061 #f0f1f3;
-  scrollbar-width: 6px;
-}
-::-webkit-scrollbar {
-  width: 6px;
-  background-color: #f0f1f3;
-}
-
-::-webkit-scrollbar-thumb {
-  background-color: #264061;
-}
-::-webkit-scrollbar-thumb:vertical {
-  height: 40px;
-}
-
-.container {
-  width: 320px;
-  padding: 0 15px;
+  font-family: 'Verdana', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans',
+    'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   margin: 0 auto;
 }
 
-.react-datepicker-wrapper {
-  position: relative;
-}
-.react-datepicker-wrapper::after {
-  content: '';
-  position: absolute;
-  width: 18px;
-  height: 20px;
-  top: 0;
-  right: -17px;
-  background-image: url('./assets/images/calendar.png');
-  background-repeat: no-repeat;
-  background-size: contain;
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
 }
 
-@media screen and (min-width: 768px) {
-  .container {
-    width: 768px;
-    padding: 0 87px;
-    margin: 0 auto;
+/* CSS Resets */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin: 0;
+}
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* BurgerMenu Animation */
+
+@keyframes slideIn {
+  from {
+    transform: translateX(
+      100%
+    ); /* Start from outside the right of the screen */
+    opacity: 0;
   }
-  .react-datepicker-wrapper::after {
-    top: 12px;
-    right: -36px;
+  to {
+    transform: translateX(0); /* Slide into its final position */
+    opacity: 1;
   }
 }
 
-@media screen and (min-width: 1280px) {
-  .container {
-    width: 1280px;
-    padding: 0 115px;
-    margin: 0;
-  }
-}
-/* Стили для body */
-
-.stopScroll {
-  overflow-y: hidden;
-}
-
-button {
-  cursor: pointer;
-  outline: none;
+.animate-slideIn {
+  animation: slideIn 0.3s ease-out;
 }

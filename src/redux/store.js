@@ -1,46 +1,35 @@
-import { configureStore, getDefaultMiddleware } from "@reduxjs/toolkit";
-import authReducer from "./auth/authReducer";
-import notificationReducer from "./notification/notificationReducer";
-import errorReducer from "./error/errorReducer";
-import loaderReducer from "./loader/loaderReducer";
-import userDataDiet from "./dailyRate/dailyRateReducer";
+import { configureStore } from '@reduxjs/toolkit';
+import { authReducer } from './auth/authSlice';
 import {
   persistStore,
   persistReducer,
   FLUSH,
+  REHYDRATE,
   PAUSE,
   PERSIST,
   PURGE,
-  REHYDRATE,
   REGISTER,
-} from "redux-persist";
-import storage from "redux-persist/lib/storage"; // defaults to localStorage for web
-import productsReducer from "./products/productReducer";
-import dateReducer from "./calendar/calendarReducer";
+} from 'redux-persist';
+import storage from 'redux-persist/lib/storage';
 
-const persistConfig = {
-  key: "auth",
+const authPersistConfig = {
+  key: 'auth',
   storage,
-  whitelist: ["token", "refreshToken", "sid"],
+  whitelist: ['user', 'token', 'refreshToken'],
 };
+
+const persistedReducer = persistReducer(authPersistConfig, authReducer);
 
 export const store = configureStore({
   reducer: {
-    products: productsReducer,
-    auth: persistReducer(persistConfig, authReducer),
-    dailyRate: userDataDiet,
-    date: dateReducer,
-    notification: notificationReducer,
-    error: errorReducer,
-    loader: loaderReducer,
+    auth: persistedReducer,
   },
-  middleware: [
-    ...getDefaultMiddleware({
+  middleware: getDefaultMiddleware =>
+    getDefaultMiddleware({
       serializableCheck: {
-        ignoredActions: [FLUSH, PAUSE, PERSIST, PURGE, REHYDRATE, REGISTER],
+        ignoreActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
     }),
-  ],
 });
 
 export const persistor = persistStore(store);

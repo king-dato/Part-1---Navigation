@@ -1,160 +1,206 @@
 import axios from 'axios';
-import authActions from './authActions';
-import notificationActions from '../notification/notificationActions';
-import dailyRateOperations from '../dailyRate/dailyRateOperations';
+import { createAsyncThunk } from '@reduxjs/toolkit';
+import { jwtDecode } from 'jwt-decode';
+import { toast } from 'react-toastify';
 
-axios.defaults.baseURL = 'https://slimmom-backend.goit.global/';
+// Provided API from .env
+// axios.defaults.baseURL =
+//   'https://goit-slimmom-team-03-d472951ab141.herokuapp.com/api';
 
-const token = {
-  set(token) {
-    axios.defaults.headers.common.Authorization = `Bearer ${token}`;
-  },
-  unset() {
-    axios.defaults.headers.common.Authorization = '';
-  },
+axios.defaults.baseURL = process.env.REACT_APP_API_URL;
+// axios.defaults.baseURL = process.env.REACT_APP_LOCAL_API_URL;
+
+// Utility to add JWT
+const setAuthHeader = token => {
+  axios.defaults.headers.common.Authorization = `Bearer ${token}`;
 };
 
-const register = credentials => dispatch => {
-  dispatch(authActions.registerRequest());
-
-  axios
-    .post('auth/register', credentials)
-    .then(({ data }) => {
-      dispatch(authActions.registerSuccess(data));
-    })
-    .catch(error => {
-      dispatch(authActions.registerError(error));
-    })
-    .finally(() =>
-      setTimeout(() => dispatch(notificationActions.notificationFalse()), 2500),
-    );
+// Utility to delete JWT
+const clearAuthHeader = () => {
+  delete axios.defaults.headers.common.Authorization;
 };
 
-const login = credentials => dispatch => {
-  dispatch(authActions.loginRequest());
+// Utility to schedule token refresh
+let refreshTimeout;
+const scheduleTokenRefresh = (token, dispatch) => {
+  if (refreshTimeout) clearTimeout(refreshTimeout);
 
-  axios
-    .post('auth/login', credentials)
-    .then(({ data }) => {
-      token.set(data.accessToken);
-      dispatch(authActions.loginSuccess(data));
-    })
-    .catch(error => {
-      dispatch(authActions.loginError(error));
-    })
-    .finally(() =>
-      setTimeout(() => dispatch(notificationActions.notificationFalse()), 2500),
-    );
-};
+  try {
+    const { exp } = jwtDecode(token);
+    const currentTime = Date.now() / 1000;
 
-const getCurrentUser = () => (dispatch, getState) => {
-  const {
-    auth: { token: persistedToken, sid: sidValue },
-  } = getState();
+    const timeUntilExpiry = exp - currentTime;
 
-  if (!persistedToken) {
-    return;
+    if (timeUntilExpiry <= 0) {
+      // Token expired, log out the user
+      dispatch(logout());
+      return;
+    }
+
+    // Schedule refresh 1 minute before expiry
+    const refreshTime = Math.max(timeUntilExpiry - 60, 0) * 1000;
+
+    refreshTimeout = setTimeout(() => {
+      dispatch(refreshUser());
+    }, refreshTime);
+  } catch (error) {
+    console.error('Error decoding JWT', error);
+    dispatch(logout());
   }
+};
 
-  token.set(persistedToken);
+// Register
+export const register = createAsyncThunk(
+  'auth/register',
+  async (credentials, thunkAPI) => {
+    try {
+      const response = await axios.post('/auth/register', credentials);
+      setAuthHeader(response.data.token);
+      toast.success('Account created successfully!');
+      return response.data;
+    } catch (error) {
+      const status = error.response?.status;
+      const message = error.response?.data?.message || error.message;
 
-  dispatch(authActions.getCurrentUserRequest());
+      if (status === 409) {
+        toast.error('Email is already in use.');
+      }
 
-  axios
-    .get('user')
-    .then(({ data }) => {
-      dispatch(authActions.getCurrentUserSuccess(data));
-    })
-    .catch(error => {
-      dispatch(authActions.getCurrentUserError(error));
-      dispatch(refreshUser({ sid: sidValue }, 'getUser'));
-      // if (error.response.status === 401) {
-      //   dispatch(authActions.tokenUnset());
+      return thunkAPI.rejectWithValue({ status, message });
+    }
+  }
+);
+
+// Login
+export const login = createAsyncThunk(
+  'auth/login',
+  async (credentials, thunkAPI) => {
+    try {
+      const response = await axios.post('/auth/login', credentials);
+      const { user, accessToken, refreshToken } = response.data;
+
+      // // Check if the user is verified
+      // if (!user.verified) {
+      //   toast.error('Please verify your email before logging in.');
+      //   return thunkAPI.rejectWithValue({
+      //     status: 403,
+      //     message: 'Email not verified',
+      //   });
       // }
-    });
-};
 
-const refreshUser = (credentials, action, values, userId) => (
-  dispatch,
-  getState,
-) => {
-  const {
-    auth: { refreshToken: persistedToken },
-  } = getState();
+      setAuthHeader(accessToken);
+      scheduleTokenRefresh(accessToken, thunkAPI.dispatch);
+      return { user, token: accessToken, refreshToken };
+    } catch (error) {
+      const status = error.response?.status;
+      const message = error.response?.data?.message || error.message;
 
-  if (!persistedToken) {
-    return;
+      if (status === 401) {
+        toast.error('Invalid credentials, please try again.');
+      }
+
+      return thunkAPI.rejectWithValue({ status, message });
+    }
+  }
+);
+
+// Logout
+export const logout = createAsyncThunk('auth/logout', async (_, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const token = state.auth.token;
+
+  if (!token) {
+    return thunkAPI.rejectWithValue('No token found');
   }
 
-  token.set(persistedToken);
+  try {
+    setAuthHeader(token);
+    await axios.post('/auth/logout');
+    clearAuthHeader();
+    clearTimeout(refreshTimeout);
+  } catch (error) {
+    return thunkAPI.rejectWithValue(error.message);
+  }
+});
 
-  dispatch(authActions.refreshUserRequest());
+// Refresh User
+export const refreshUser = createAsyncThunk(
+  'auth/refresh',
+  async (_, thunkAPI) => {
+    const state = thunkAPI.getState();
+    const refreshToken = state.auth.refreshToken;
 
-  axios
-    .post('auth/refresh', credentials)
-    .then(({ data }) => {
-      token.set(data.newAccessToken);
-      dispatch(authActions.refreshUserSuccess(data));
-      switch (action) {
-        case 'getUser':
-          dispatch(getCurrentUser());
-          break;
+    if (!refreshToken) {
+      return thunkAPI.rejectWithValue('No refresh token found');
+    }
 
-        case 'DailyRates':
-          dispatch(
-            dailyRateOperations.onFetchDailyRatesAuthorised(values, userId),
-          );
-          break;
+    try {
+      const response = await axios.post('/auth/refresh', { refreshToken });
+      const {
+        user,
+        accessToken,
+        refreshToken: newRefreshToken,
+      } = response.data;
 
-        case 'logOut':
-          dispatch(logOut());
-          break;
+      setAuthHeader(accessToken);
+      scheduleTokenRefresh(accessToken, thunkAPI.dispatch);
 
-        default:
-          break;
+      return { user, token: accessToken, refreshToken: newRefreshToken };
+    } catch (error) {
+      // Handle refresh token expiration
+      if (error.response?.status === 401) {
+        thunkAPI.dispatch(logout());
       }
-    })
-    .catch(error => {
-      if (error.response.status === 401) {
-        dispatch(authActions.tokenUnset());
+
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || error.message
+      );
+    }
+  }
+);
+
+// Resend Verify Email
+export const resendVerifyEmail = createAsyncThunk(
+  'auth/resendVerifyEmail',
+  async (email, thunkAPI) => {
+    try {
+      const response = await axios.post('/auth/verify', { email });
+
+      toast.success('Verification email sent successfully.');
+
+      return response.data;
+    } catch (error) {
+      const status = error.response?.status;
+      const message = error.response?.data?.message || error.message;
+
+      if (status === 404) {
+        toast.error('Email not registered.');
+      } else if (status === 400) {
+        toast.info('Email was already verified.');
       }
-      dispatch(authActions.refreshUserError(error));
-    })
-    .finally(() =>
-      setTimeout(() => dispatch(notificationActions.notificationFalse()), 2500),
-    );
-};
 
-const logOut = () => (dispatch, getState) => {
-  const {
-    auth: { sid: sidValue },
-  } = getState();
+      return thunkAPI.rejectWithValue({ status, message });
+    }
+  }
+);
 
-  dispatch(authActions.logoutRequest());
+// Current User
+export const getCurrentUser = createAsyncThunk(
+  'auth/getCurrentUser',
+  async (_, thunkAPI) => {
+    const state = thunkAPI.getState();
+    const persistedToken = state.auth.token;
 
-  axios
-    .post('auth/logout')
-    .then(() => {
-      token.unset();
-      dispatch(authActions.logoutSuccess());
-    })
-    .catch(error => {
-      dispatch(refreshUser({ sid: sidValue }, 'logOut'));
-      if (error.response.status === 401) {
-        dispatch(authActions.tokenUnset());
-      }
-      dispatch(authActions.logoutError(error));
-    })
-    .finally(() =>
-      setTimeout(() => dispatch(notificationActions.notificationFalse()), 2500),
-    );
-};
+    if (!persistedToken) {
+      return thunkAPI.rejectWithValue('No token found');
+    }
 
-// eslint-disable-next-line
-export default {
-  register,
-  login,
-  getCurrentUser,
-  refreshUser,
-  logOut,
-};
+    try {
+      setAuthHeader(persistedToken);
+      const response = await axios.get('/auth/current');
+      return response.data;
+    } catch (error) {
+      return thunkAPI.rejectWithValue(error.response.data);
+    }
+  }
+);
