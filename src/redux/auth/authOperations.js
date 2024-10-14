@@ -56,7 +56,9 @@ export const register = createAsyncThunk(
     try {
       const response = await axios.post('/auth/register', credentials);
       setAuthHeader(response.data.token);
-      toast.success('Account created successfully!');
+      toast.success(
+        'Account created! Verification has been sent to your email'
+      );
       return response.data;
     } catch (error) {
       const status = error.response?.status;
@@ -79,11 +81,11 @@ export const login = createAsyncThunk(
       const response = await axios.post('/auth/login', credentials);
       const { user, accessToken, refreshToken } = response.data;
 
-      // // Check if the user is verified
+      // Check if the user is verified
       // if (!user.verified) {
       //   toast.error('Please verify your email before logging in.');
       //   return thunkAPI.rejectWithValue({
-      //     status: 403,
+      //     status: 401,
       //     message: 'Email not verified',
       //   });
       // }
@@ -95,8 +97,19 @@ export const login = createAsyncThunk(
       const status = error.response?.status;
       const message = error.response?.data?.message || error.message;
 
-      if (status === 401) {
+      if (status === 401 && message === 'Please verify your email') {
+        toast.error('Please verify your email.');
+      }
+
+      if (
+        (status === 401 && message === 'Invalid user') ||
+        message === 'Invalid credentials'
+      ) {
         toast.error('Invalid credentials, please try again.');
+      }
+
+      if (status === 400) {
+        toast.warning('Please enter valid email address');
       }
 
       return thunkAPI.rejectWithValue({ status, message });
@@ -174,9 +187,11 @@ export const resendVerifyEmail = createAsyncThunk(
       const message = error.response?.data?.message || error.message;
 
       if (status === 404) {
-        toast.error('Email not registered.');
-      } else if (status === 400) {
+        toast.error('Email is not registered.');
+      } else if (status === 400 && message === 'Email is already verified') {
         toast.info('Email was already verified.');
+      } else if (status === 400) {
+        toast.warning('Please enter valid email address');
       }
 
       return thunkAPI.rejectWithValue({ status, message });
